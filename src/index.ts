@@ -41,12 +41,13 @@ app.use(async (req, res, next) => {
 		// verify
 		const verifyResult = nJwt.verify(authz, pem, "RS256");
 		const sub = claims.sub;
+		console.log("Verified Authorization header JWT");
 
 		// create response body with subject only
 		const response_body = {
 			sub
 		};
-		console.log(`Sending response: ${response_body}`);
+		console.log(`Sending response: ${JSON.stringify(response_body)}`);
 		
 		// send response
 		res.type("application/json");
