@@ -1,41 +1,46 @@
+require("dotenv").config();
 const express = require("express");
-const { json } = require("body-parser");
+const { JWTConfig, JWTVerifier } = require("jwt-verifier");
+const fetch = require("node-fetch");
 
 const app = express();
-app.use(json());
 
+// get wellknown endpoint and extract JWKS endpoint
+const wellknown_uri = `https://${process.env.AZURE_TENANT_NAME}.b2clogin.com/${process.env.AZURE_TENANT_NAME}.onmicrosoft.com/v2.0/.well-known/openid-configuration?p=${process.env.AZURE_B2C_POLICY}`;
+console.log(`Loading wellknown URI ${wellknown_uri}`);
+fetch(wellknown_uri)
+	.then(res => res.json())
+	.then(wellknownCfg => {
+		const jwks_uri = wellknownCfg.jwks_uri;
+		console.log(`Setting JWKS URI to ${jwks_uri}`);
+		JWTConfig.instance.CERT_URL = jwks_uri;
+})
+app.use((req, res, next) => {
+	const auth_header = req.headers.authorization;
+    if (!auth_header) return res.status(401).send("Unauthenticated").end();
+	const authz = auth_header.substring(7);
+	JWTVerifier.verify(authz).subscribe((verified) => {
+        if (verified) {
+			console.log("Verified JWT in authorization header");
+			next();
+		} else {
+			return res.status(401).send("Unable to verify JWT in Authorization header");
+		}
+	});
+})
 app.use(async (req, res, next) => {
     const auth_header = req.headers.authorization;
-    if (!auth_header) return res.status(401).send("Unauthenticated").end();
-    const claims = JSON.parse(Buffer.from(auth_header.substring(7).split(".")[1], "base64").toString());
+	const authz = auth_header.substring(7);
+    const claims = JSON.parse(Buffer.from(authz.split(".")[1], "base64").toString());
     const sub = claims.sub;
     const aud = claims.aud;
     if (aud !== (process.env.OIDC_AUDIENCE || "44fd6d29-faad-475f-ad06-855b554d9353")) {
 		return res.status(401).send("Invalid audience");
 	}
 
-	// create response body
+	// create response body with subject only
 	const response_body = {
-        sub /*,
-                name: "John Doe",
-                nickname: "Jimmy",
-                given_name: "John",
-                middle_name: "James",
-                family_name: "Doe",
-                profile: "https://example.com/john.doe",
-                zoneinfo: "America/Los_Angeles",
-                locale: "en-US",
-                updated_at: 1311280970,
-                email: "mheisterberg+johndoe@salesforce.com",
-                email_verified: true,
-                address: {
-                    street_address: "123 Hollywood Blvd.",
-                    locality: "Los Angeles",
-                    region: "CA",
-                    postal_code: "90210",
-                    country: "US",
-                },
-                phone_number: "+1 (425) 555-1212",*/,
+        sub
     };
 	console.log(response_body);
     
