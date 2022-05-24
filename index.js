@@ -6,6 +6,9 @@ app.use(json());
 
 app.use(async (req, res, next) => {
 	console.log(req.originalUrl);
+	Object.keys(req.headers).forEach(key => {
+		console.log(`${key} = ${req.headers[key]}`);
+	})
 	console.log(req.body);
 
 	res.type("application/json");
