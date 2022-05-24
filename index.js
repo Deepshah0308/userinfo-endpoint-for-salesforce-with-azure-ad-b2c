@@ -7,7 +7,7 @@ app.use(json());
 app.use(async (req, res, next) => {
     const auth_header = req.headers.authorization;
     if (!auth_header) return res.status(401).send("Unauthenticated").end();
-    const claims = JSON.parse(Buffer.from(auth_header.split(".")[1], "base64").toString());
+    const claims = JSON.parse(Buffer.from(auth_header.substring(7).split(".")[1], "base64").toString());
     const sub = claims.sub;
     const aud = claims.aud;
     if (aud !== (process.env.OIDC_AUDIENCE || "44fd6d29-faad-475f-ad06-855b554d9353")) {
