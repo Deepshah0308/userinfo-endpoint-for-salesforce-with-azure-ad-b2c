@@ -25,7 +25,7 @@ fetch(wellknown_uri)
 	}
 )
 
-app.use(async (req, res, next) => {
+app.use(async (req, res) => {
 	const auth_header = req.headers.authorization;
     if (!auth_header) return res.status(401).send("Unauthenticated").end();
 	const authz = auth_header.substring(7);
