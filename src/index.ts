@@ -23,15 +23,24 @@ const jwks_keys : Promise<JWKSet> = fetch(wellknown_uri)
 		return Promise.resolve(JWKSet.fromObject(jwks));
 	})
 
-app.use(async (req, res) => {
+app.get("/", async (req, res) => {
+	// ensure authn header
 	const auth_header = req.headers.authorization;
     if (!auth_header) return res.status(401).send("Unauthenticated").end();
+
+	// extract authn header
 	const authz = auth_header.substring(7);
+	if (!authz.match(/([-A-Za-z0-9=_]+)\.([-A-Za-z0-9=_]+)\.([-A-Za-z0-9=_]+)/)) {
+		return res.status(401).send("Invalid JWT in Authorization header");
+	}
 	const header = JSON.parse(Buffer.from(authz.split(".")[0], "base64").toString());
 	const claims = JSON.parse(Buffer.from(authz.split(".")[1], "base64").toString());
+
+	// get keyid and get corresponding key
 	const kid = header.kid;
 	console.log(`Looking for KeyID: ${kid}`)
 	const jwkKey = (await jwks_keys).findKeyById(kid);
+	if (!jwkKey) return res.status(401).send("Unable to find valid key to verify JWT");
 	const pem = jwkKey.key.toPublicKeyPEM();
 	console.log(`Found public key: ${pem}`);
 
