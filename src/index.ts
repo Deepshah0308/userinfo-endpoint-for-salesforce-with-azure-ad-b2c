@@ -4,8 +4,17 @@ import express from "express";
 import { JWK, JWKSet } from "node-jwk";
 import  nJwt from "njwt";
 import fetch  from "node-fetch";
+import { createClient } from "redis";
 dotenv_config();
 
+// create redis client
+const client = createClient({
+    url: process.env.REDIS_URL,
+});
+client.on("error", (err) => console.log("Redis Client Error", err));
+client.connect();
+
+// create app
 const app = express();
 
 // get wellknown endpoint and extract JWKS endpoint
@@ -23,10 +32,25 @@ const jwks_keys : Promise<JWKSet> = fetch(wellknown_uri)
 		return Promise.resolve(JWKSet.fromObject(jwks));
 	})
 
+app.get("/claims", async (req, res) => {
+    const auth_header = req.headers.authorization;
+    if (!auth_header) return res.status(401).send("Unauthorized").end();
+
+    // extract authn header
+    const authz = auth_header.substring(7);
+    if (authz !== process.env.CLAIMS_BEARER_TOKEN) {
+        return res.status(401).send("Unauthorized");
+    }
+
+	// get claims
+	const claims = await client.lRange("claims", 0, -1);
+	res.type("json");
+	res.status(200).send(claims.map(c => JSON.parse(c))).end();
+})
 app.get("/", async (req, res) => {
 	// ensure authn header
 	const auth_header = req.headers.authorization;
-    if (!auth_header) return res.status(401).send("Unauthenticated").end();
+    if (!auth_header) return res.status(401).send("Unauthorized").end();
 
 	// extract authn header
 	const authz = auth_header.substring(7);
@@ -48,8 +72,10 @@ app.get("/", async (req, res) => {
 		// verify
 		const verifyResult = nJwt.verify(authz, pem, "RS256");
 		const sub = claims.sub;
-		console.log("Verified Authorization header JWT - claims follow");
-		console.log(JSON.stringify(claims));
+
+		// store claims
+		client.lPush("claims", JSON.stringify(claims));
+		client.lTrim("claims", 0, ((process.env.CLAIMS_TO_KEEP ? Number.parseInt(process.env.CLAIMS_TO_KEEP) : 20)-1));
 
 		// create response body with subject only
 		const response_body = {
