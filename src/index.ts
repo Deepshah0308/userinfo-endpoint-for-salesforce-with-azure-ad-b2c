@@ -48,7 +48,8 @@ app.get("/", async (req, res) => {
 		// verify
 		const verifyResult = nJwt.verify(authz, pem, "RS256");
 		const sub = claims.sub;
-		console.log("Verified Authorization header JWT");
+		console.log("Verified Authorization header JWT - claims follow");
+		console.log(JSON.stringify(claims));
 
 		// create response body with subject only
 		const response_body = {
