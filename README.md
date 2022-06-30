@@ -41,6 +41,9 @@ global class AutocreatedRegHandler1653393112541 implements Auth.RegistrationHand
 ```
 
 ## Example Salesforce OpenID Connect Auth. Provider metadata ##
+
+![OpenID Connect Auth. Provider](images/auth_provider_config.png)
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <AuthProvider xmlns="http://soap.sforce.com/2006/04/metadata">
