@@ -1,7 +1,7 @@
 import {config as dotenv_config} from "dotenv";
 import express from "express";
 //@ts-ignore
-import { JWK, JWKSet } from "node-jwk";
+import { JWKSet } from "node-jwk";
 import  nJwt from "njwt";
 import fetch  from "node-fetch";
 import { createClient } from "redis";
@@ -36,17 +36,22 @@ app.get("/claims", async (req, res) => {
     const auth_header = req.headers.authorization;
     if (!auth_header) return res.status(401).send("Unauthorized").end();
 
-    // extract authn header
+    // extract Bearer token from authn header
     const authz = auth_header.substring(7);
     if (authz !== process.env.CLAIMS_BEARER_TOKEN) {
         return res.status(401).send("Unauthorized");
     }
 
-	// get claims
+	// get claims frm redis and show them
 	const claims = await client.lRange("claims", 0, -1);
 	res.type("json");
 	res.status(200).send(claims.map(c => JSON.parse(c))).end();
 })
+
+/**
+ * This is the actual userinfo endpoint. Refer to the README.
+ * 
+ */
 app.get("/", async (req, res) => {
 	// ensure authn header
 	const auth_header = req.headers.authorization;
@@ -95,4 +100,6 @@ app.get("/", async (req, res) => {
 		return res.status(401).send("Unable to verify Authorization header");
 	}
 });
+
+// listen
 app.listen(process.env.PORT || 3000);
